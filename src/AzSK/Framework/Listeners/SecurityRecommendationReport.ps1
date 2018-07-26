@@ -31,11 +31,16 @@ class SecurityRecommendationReport: ListenerBase
 
 		
 
-		 $this.RegisterEvent([SVTEvent]::CommandCompleted, {
+		 $this.RegisterEvent([AzSKRootEvent]::CommandCompleted, {
             $currentInstance = [SecurityRecommendationReport]::GetInstance();
             try 
             {
-                $props = $Event.SourceArgs[0];
+                $messages = $Event.SourceArgs.Messages;
+				if(($messages | Measure-Object).Count -gt 0 -and $Event.SourceArgs.Messages[0].Message -eq "RecommendationData")
+				{
+					$dataObject = $Event.SourceArgs.Messages[0].DataObject;
+					Write-Host ($dataObject | ConvertTo-Json -Depth 10)
+				}
             }
             catch 
             {

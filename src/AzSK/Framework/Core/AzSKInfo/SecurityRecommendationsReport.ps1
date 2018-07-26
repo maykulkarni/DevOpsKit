@@ -21,6 +21,7 @@ class SecurityRecommendationsReport: CommandBase
 	    [MessageData[]] $messages = @();	   
 		try
 		{
+			[RecommendedSecurityReport] $report = [RecommendedSecurityReport]::new();
 			[SecurityReportInput] $userInput = [SecurityReportInput]::new();
 			if(-not [string]::IsNullOrWhiteSpace($ResourceGroupName))
 			{
@@ -34,7 +35,8 @@ class SecurityRecommendationsReport: CommandBase
 							$userInput.Features += ([SVTMapping]::SupportedResourceMap[$_.ResourceType.ToLower()]).ToString();
 						}
 					}	
-				}
+					$report.ResourceGroupName = $ResourceGroupName;
+				}				
 				elseif(($ResourceTypeNames | Measure-Object).Count -gt 0)
 				{
 					$ResourceTypeNames | ForEach-Object { $userInput.Features += $_.ToString();}
@@ -43,7 +45,7 @@ class SecurityRecommendationsReport: CommandBase
 				{
 					$userInput.Categories = Categories
 				}
-			}
+			}			
 
 			$uri = "";
 			$content = [Helpers]::ConvertToJsonCustomCompressed($userInput);
@@ -52,28 +54,42 @@ class SecurityRecommendationsReport: CommandBase
 			#$result = [Helpers]::InvokeWebRequest("Post", $uri,$headers, $content, "application/json");
 			[RecommendedSecureCombination] $dummy = [RecommendedSecureCombination]::new();
 
-			$dummy.CompliancePercentage = 60.00;
-			$dummy.TotalOccurances = 5;
-			$dummy.IsCurrentGroupRecommended = $true;
+			$dummyCFG = [RecommendedFeatureGroup]::new();
+			$dummyCFG.Features = @("AppService","Storage");
+			$dummyCFG.Categories = @("Web App","Storage");		
+			$dummyCFG.Ranking = 2;
+			$dummyCFG.TotalSuccessCount = 300;
+			$dummyCFG.TotalFailCount = 100;
+			$dummyCFG.SecurityRating = 60.00;
+			$dummyCFG.TotalOccurances = 4;
+			$dummy.CurrentFeatureGroup = $dummyCFG;
+
 			$dummyFG1 = [RecommendedFeatureGroup]::new();
 			$dummyFG1.Features = @("AppService","Storage");
-			# $dummyFG1.Features.Add("AppService");
-			# $dummyFG1.Features.Add("Storage");
+			$dummyFG1.Categories = @("Web App","Storage");		
 			$dummyFG1.Ranking = 2;
 			$dummyFG1.TotalSuccessCount = 300;
 			$dummyFG1.TotalFailCount = 100;
+			$dummyFG1.SecurityRating = 60.00;
+			$dummyFG1.TotalOccurances = 4;
 			$dummy.RecommendedFeatureGroups += $dummyFG1;
 
 			$dummyFG2 = [RecommendedFeatureGroup]::new();
-			$dummyFG2.Features = @("AppService", "Storage","KeyVault");
-			# $dummyFG2.Features.Add("AppService");
-			# $dummyFG2.Features.Add("Storage");
-			# $dummyFG2.Features.Add("KeyVault");
+			$dummyFG2.Features = @("AppService", "Storage","KeyVault");			
+			$dummyFG2.Categories = @("Web App","Storage", "Security Infra");		
 			$dummyFG2.Ranking = 1;
 			$dummyFG2.TotalSuccessCount = 350;
 			$dummyFG2.TotalFailCount = 50;
+			$dummyFG2.SecurityRating = 60.00;
+			$dummyFG2.TotalOccurances = 4;
 			$dummy.RecommendedFeatureGroups += $dummyFG2;
-			Write-Host ($dummy | ConvertTo-Json -Depth 10)
+			#Write-Host ($dummy | ConvertTo-Json -Depth 10)
+			[MessageData] $message = [MessageData]::new();
+			$message.Message = "RecommendationData"
+			$report.Input = $userInput;
+			$report.Recommendations =$dummy;
+			$message.DataObject = $report;
+			$messages += $message;
 			#$outputReponse = [RecommendedSecureCombination]($result)
 			#AddToMessages
 			#$messages.

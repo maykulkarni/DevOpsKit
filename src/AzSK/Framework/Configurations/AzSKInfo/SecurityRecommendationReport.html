@@ -1,0 +1,86 @@
+<html>
+<head>
+    <title>
+        output
+    </title>
+    
+</head>
+<body>
+    <div class="headerBackGround">
+            <img id="logo" src="https://azsk.azurewebsites.net/Images/Icons/AzSK_Logo.png" alt><span class="header">Cloud App Resource Recommendation Report </span>
+    </div>
+        
+    <div class="header2">
+         <u>Current Combination :</u>
+    </div>
+
+    <div>
+       <br />
+        <div class="dataPoint" id="rgn">  Resource group name: [#rgName#]</div>
+        <div class="dataPoint" id="Features">  Features: [#features#]</div>
+        <div class="dataPoint" id="categories"> Categories: [#categories#]</div>
+    </div>
+    
+    <div class="header2">
+        <u>Analysis & Recommendations:</u>
+    </div>
+    <div>
+    
+      <div class="header3"><u>Analysis of current feature group:</u></div>
+        <div class="dataPoint" id="cgranking">  Current Group Ranking: [#cgranking#]</div>
+        <div class="dataPoint" id="instcount"> No. of instances with same combination: [#cgInstCount#]</div>
+        <div class="dataPoint" id="ccf"> Current Combination Features: [#cgF#]</div>
+        <div class="dataPoint" id="ccc"> Current Combination Categories: [#cgC#]</div>
+        <div class="dataPoint" id="measures"> Measures: [Total Pass: [#cgPass#]] [Total Fail: [#cgFail#]]</div>
+     
+    <div>
+
+    <div>
+            <div class="header3"><u>Recommendations based on categories:</u></div>
+     
+              [#recommendations#]    
+    <div>   
+    <style>
+        .headerBackGround {
+            background-color: #0b2534;
+            opacity: 0.9;                        
+            left: 55px;
+            top: 55px;                        
+        }
+        .header {
+            font-size: 35pt;
+            color:#ffffff;
+            font-family: Arial, Helvetica, sans-serif;            
+            padding-left: 10pt;            
+        }
+        #logo{
+            padding-top: 10pt;
+            padding-left: 5pt;
+            height: 52px;
+            width: 45px;
+        }
+        .header2{
+            font-size: 15pt;
+            color:green;
+            font-family: Arial, Helvetica, sans-serif;            
+            padding-left: 1pt;  
+            padding-top: 10pt;  
+        }
+        .header3{
+            font-size: 12pt;
+            color:olive;
+            font-family: Arial, Helvetica, sans-serif;            
+            padding-left: 1pt;  
+            padding-top: 10pt;  
+        }
+        .dataPoint{
+            font-size: 10pt;
+            color:midnightblue;
+            font-family: Arial, Helvetica, sans-serif;            
+            padding-left: 1pt;  
+            padding-top: 1pt; 
+        }
+
+    </style>
+</body>
+</html>

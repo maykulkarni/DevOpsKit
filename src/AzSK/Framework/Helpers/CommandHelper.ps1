@@ -184,7 +184,12 @@ class CommandHelper
 			IsLatestRequired = $false;
         },
 		# Update-PersistedState
-
+		[CommandDetails]@{
+            Verb = "Get";
+            Noun = "AzSKSecurityRecommendationReport";
+            ShortName = "GAR";
+			IsLatestRequired = $false;
+		},
 		[CommandDetails]@{
             Verb = "Update";
             Noun = "AzSKPersistedState";

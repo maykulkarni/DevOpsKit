@@ -276,3 +276,62 @@ function Update-AzSKPersistedState
 		[ListenerHelper]::UnregisterListeners();
 	}
 }
+
+
+
+function Get-AzSKSecurityRecommendationReport 
+{	
+	[OutputType([String])]
+	Param
+	(
+
+		[string]
+        [Parameter(Position = 0, Mandatory = $true, HelpMessage="Subscription id for which the security evaluation has to be performed.")]
+		[ValidateNotNullOrEmpty()]
+		[Alias("sid", "s")]
+		$SubscriptionId,
+
+        [string]
+        [Parameter(Mandatory = $true, ParameterSetName = "ResourceGroupName")]
+		[Alias("rgn")]
+		$ResourceGroupName,
+
+		[string[]]
+		[ValidateSet("Storage","WebFrontEnd","APIs","Cache","NetworkIsolation","CommuincationHub","Logs","Reporting","DataProcessing","SubscriptionCore","BackendProcessing","Hybrid","SecurityInfra")]
+        [Parameter(Mandatory = $true, ParameterSetName = "Categories")]
+		$Categories,
+        
+        [Parameter(Mandatory = $true, ParameterSetName = "ResourceTypeNames")]
+		[ResourceTypeName[]]
+		[Alias("rtns")]
+		$ResourceTypeNames
+    )
+
+	Begin
+	{
+		[CommandHelper]::BeginCommand($PSCmdlet.MyInvocation);
+		[ListenerHelper]::RegisterListeners();
+	}
+
+	Process
+	{
+	try 
+		{
+			$SecurityRecommendationsReport = [SecurityRecommendationsReport]::new($SubscriptionId, $PSCmdlet.MyInvocation);
+			if ($SecurityRecommendationsReport) 
+			{
+				return $SecurityRecommendationsReport.InvokeFunction($SecurityRecommendationsReport.GenerateReport,@($ResourceGroupName, $ResourceTypeNames,$Categories));
+			}
+		}
+		catch 
+		{
+			[EventBase]::PublishGenericException($_);
+		}  
+	}
+
+	End
+	{
+		[ListenerHelper]::UnregisterListeners();
+	}
+}
+

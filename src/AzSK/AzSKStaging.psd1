@@ -139,7 +139,8 @@
 		'Remove-AzSKAlertMonitoring'
         'Get-AzSKARMTemplateSecurityStatus',
         'Clear-AzSKSessionState',
-		'Update-AzSKPersistedState'
+        'Update-AzSKPersistedState',
+        'Get-AzSKSecurityRecommendationReport'
     )
 
     # Cmdlets to export from this module

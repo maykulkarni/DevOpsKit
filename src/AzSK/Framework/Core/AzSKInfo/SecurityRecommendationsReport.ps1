@@ -47,12 +47,41 @@ class SecurityRecommendationsReport: CommandBase
 				}
 			}			
 
-			$uri = "";
+			$uri = "http://104.211.204.4/recommend";
 			$content = [Helpers]::ConvertToJsonCustomCompressed($userInput);
-			write-host $content;
-			$headers = @();
-			#$result = [Helpers]::InvokeWebRequest("Post", $uri,$headers, $content, "application/json");
-			[RecommendedSecureCombination] $dummy = [RecommendedSecureCombination]::new();
+			#write-host $content;
+			$headers = @{};
+			$result = [WebRequestHelper]::InvokeWebRequest([Microsoft.PowerShell.Commands.WebRequestMethod]::Post, $uri,$headers, $content, "application/json");
+			[RecommendedSecureCombination] $Combination = [RecommendedSecureCombination]::new();
+			
+			if(($result | Measure-Object).Count -gt 0)
+			{
+				$currentFeatureGroup = [RecommendedFeatureGroup]::new();
+				$currentFeatureGroup.Features = $userInput.Features;
+				$currentFeatureGroup.Categories = $result.CurrentCategoryGroup;
+				$currentFeatureGroup.Ranking = 2;
+				$currentFeatureGroup.TotalSuccessCount = $result.TotalSuccessCount;
+				$currentFeatureGroup.TotalFailCount = $result.TotalFailCount;
+				$currentFeatureGroup.SecurityRating = (1-$result.SecurityRating)*100;
+				$currentFeatureGroup.TotalOccurances = $result.TotalOccurrences;
+				$Combination.CurrentFeatureGroup = $currentFeatureGroup;
+
+				$result.RecommendedFeatureGroups | ForEach-Object{
+					$recommendedGroup = $_;
+					$recommededFeatureGroup = [RecommendedFeatureGroup]::new();
+					$recommededFeatureGroup.Features = $recommendedGroup;
+					$recommededFeatureGroup.Categories = $result.CurrentCategoryGroup;		
+					$recommededFeatureGroup.Ranking = 2;
+					$recommededFeatureGroup.TotalSuccessCount = 300;
+					$recommededFeatureGroup.TotalFailCount = 100;
+					$recommededFeatureGroup.SecurityRating = 60.00;
+					$recommededFeatureGroup.TotalOccurances = 4;
+					$Combination.RecommendedFeatureGroups += $recommededFeatureGroup;
+				}
+
+			}
+
+			<#[RecommendedSecureCombination] $dummy = [RecommendedSecureCombination]::new();
 
 			$dummyCFG = [RecommendedFeatureGroup]::new();
 			$dummyCFG.Features = @("AppService","Storage");
@@ -83,11 +112,21 @@ class SecurityRecommendationsReport: CommandBase
 			$dummyFG2.SecurityRating = 60.00;
 			$dummyFG2.TotalOccurances = 4;
 			$dummy.RecommendedFeatureGroups += $dummyFG2;
+
+			$dummyFG3 = [RecommendedFeatureGroup]::new();
+			$dummyFG3.Features = @("AppService", "Automation","KeyVault");			
+			$dummyFG3.Categories = @("Web App","Backend Processing", "Security Infra");		
+			$dummyFG3.Ranking = 1;
+			$dummyFG3.TotalSuccessCount = 350;
+			$dummyFG3.TotalFailCount = 50;
+			$dummyFG3.SecurityRating = 60.00;
+			$dummyFG3.TotalOccurances = 4;
+			$dummy.RecommendedFeatureGroups += $dummyFG3; #>
 			#Write-Host ($dummy | ConvertTo-Json -Depth 10)
 			[MessageData] $message = [MessageData]::new();
 			$message.Message = "RecommendationData"
 			$report.Input = $userInput;
-			$report.Recommendations =$dummy;
+			$report.Recommendations =$Combination;
 			$message.DataObject = $report;
 			$messages += $message;
 			#$outputReponse = [RecommendedSecureCombination]($result)
@@ -97,7 +136,7 @@ class SecurityRecommendationsReport: CommandBase
 		}
 		catch
 		{
-			$this.PublishEvent([AzSKGenericEvent]::Exception, "Unable to generate the security recommendation report");
+		$this.PublishEvent([AzSKGenericEvent]::Exception, "Unable to generate the security recommendation report");
 			$this.PublishException($_);
 		}
 		return $messages;

@@ -84,13 +84,16 @@ class SecurityRecommendationReport: ListenerBase
                     if(($reportObject.Recommendations.RecommendedFeatureGroups | Measure-Object).Count -gt 0)
                     {
                         $recommendationTemplate = @"
-                    <div class="dataPoint" id="cgranking[#i#]"> Category Group Ranking: [#cgranking#]</b></div>
-              <div class="dataPoint" id="instcount[#i#]"> No. of instances with same combination: [#instcount#]</div>
-              <div class="dataPoint" id="fc[#i#]"> Feature combination:: [#fc#]</div>
-              <div class="dataPoint" id="cc[#i#]"> Category Combination: [#cc#]</div>
-              <div class="dataPoint" id="measures[#i#]"> Measures: [Total Pass: [#pass#]] [Total Fail: [#fail#]]</div>
+                        <table class="tablePadding">
+                    <tr><div class="dataPoint" id="cgranking[#i#]"><td class="masterCol"> Category Group Ranking</td><td class="tablePadding"> [#cgranking#]</td></b></div></tr>
+              <tr><div class="dataPoint" id="instcount[#i#]"><td class="masterCol"> No. of instances with same combination</td><td class="tablePadding"> [#instcount#]</td></div></tr>
+              <tr><div class="dataPoint" id="fc[#i#]"><td class="masterCol"> Feature combination</td><td class="tablePadding">[#fc#]</td></div></tr>
+              <tr><div class="dataPoint" id="cc[#i#]"> <td class="masterCol">Category Combination</td><td class="tablePadding"> [#cc#]</td></div></tr>
+              <tr><div class="dataPoint" id="measures[#i#]"><td class="masterCol"> Measures</td><td class="tablePadding"> [Total Pass: [#pass#] [Total Fail: [#fail#]]</td></div></tr>
+              </table>
               <br />
 "@;
+
                         $recommendationHtml = "";
                         $i = 0;
                         $orderedRecommendations = $reportObject.Recommendations.RecommendedFeatureGroups | Sort-Object -Property Ranking

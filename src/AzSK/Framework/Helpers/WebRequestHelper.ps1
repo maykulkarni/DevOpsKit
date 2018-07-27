@@ -83,7 +83,7 @@ class WebRequestHelper {
 						}
 						else
 						{
-							$requestResult = Invoke-WebRequest -Method $method -Uri $validatedUri -Headers $headers -Body ($body | ConvertTo-Json -Depth 10 -Compress) -UseBasicParsing
+							$requestResult = Invoke-WebRequest -Method $method -Uri $validatedUri -Headers $headers -ContentType $contentType  -Body ($body | ConvertTo-Json -Depth 10 -Compress) -UseBasicParsing
 						}
 					}	
 					else 

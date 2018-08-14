@@ -199,6 +199,8 @@ class CCAutomation: CommandBase
 		[MessageData[]] $messages = @();
 		try
 		{
+			#Validate if command is running from local policy folder
+			$this.ValidateIfLocalPolicyIsEnabled()
 			#region :validation/RG creation
 			if(!$this.IsCAInstallationValid())
 			{
@@ -468,6 +470,8 @@ class CCAutomation: CommandBase
 		[MessageData[]] $messages = @();
 		try
 		{
+			#Validate if command is running with local policy
+			$this.ValidateIfLocalPolicyIsEnabled()
             #Always assign permissions if CA is in central scan mode
             if($this.IsCentralScanModeOn)
             {
@@ -479,17 +483,6 @@ class CCAutomation: CommandBase
 			if(($existingAccount|Measure-Object).Count -eq 0)
 			{
 				throw ([SuppressedException]::new(("Continuous Assurance(CA) is not configured in this subscription. Please install using '"+ $this.installCommandName +"' command with required parameters."), [SuppressedExceptionType]::InvalidOperation))
-				
-				#Check if deprecated version found (old accounts don't have tags)
-				<#$existingAccount | ForEach-Object{
-					$automationTags = $_.Tags
-					if($_.ResourceName-eq $this.deprecatedAccountName -or `
-					($automationTags.Count -gt 0 -and $automationTags.Contains("AzSKVersion") -and `
-					([System.Version]$automationTags["AzSKVersion"] -lt [System.Version]([ConfigurationManager]::GetAzSKConfigData().UpdateCompatibleCCVersion))))
-					{
-						throw ([SuppressedException]::new(("Deprecated and incompatible version of Continuous Assurance Automation Account: [$($_.ResourceName)] found. Please remove this account using '"+$this.removeCommandName+"' command and install latest version using '"+$this.installCommandName+"' command with required parameters."), [SuppressedExceptionType]::InvalidOperation))
-					} 
-				}#>
 			}
 			else
 			{
@@ -1289,7 +1282,7 @@ class CCAutomation: CommandBase
 			$caSummaryTable.Item("AzureADAppName") = $ADapp.DisplayName
 		}
 		$caSummaryTable.Item("CertificateExpiry") = $runAsCertificate.ExpiryTime
-		$caSummaryTable.Item("AzSKReportsStorageAccountName") = $reportsStorageAccount.ResourceName
+		$caSummaryTable.Item("AzSKReportsStorageAccountName") = $reportsStorageAccount.Name
 		$caSummaryTable.Item("RunbookVersion") = "Current version: [$azskCurrentCARunbookVersion] Latest version: [$azskLatestCARunbookVersion]"
 		
 		$caSummaryTable = $caSummaryTable.GetEnumerator() |Sort-Object -Property Name|Format-Table -AutoSize -Wrap |Out-String		
@@ -1499,8 +1492,8 @@ class CCAutomation: CommandBase
 			{
 				mkdir -Path $(Split-Path -Parent $filename) -Force
 			}
-			$keys = Get-AzureRmStorageAccountKey -ResourceGroupName $this.AutomationAccount.CoreResourceGroup -Name $reportsStorageAccount.ResourceName
-			$currentContext = New-AzureStorageContext -StorageAccountName $reportsStorageAccount.ResourceName -StorageAccountKey $keys[0].Value -Protocol Https
+			$keys = Get-AzureRmStorageAccountKey -ResourceGroupName $this.AutomationAccount.CoreResourceGroup -Name $reportsStorageAccount.Name
+			$currentContext = New-AzureStorageContext -StorageAccountName $reportsStorageAccount.Name -StorageAccountKey $keys[0].Value -Protocol Https
 			$CAScanDataBlobObject = Get-AzureStorageBlob -Container $this.CAMultiSubScanConfigContainerName -Blob $this.CATargetSubsBlobName -Context $currentContext -ErrorAction SilentlyContinue 
 			if($null -ne $CAScanDataBlobObject)
 			{
@@ -1696,7 +1689,7 @@ class CCAutomation: CommandBase
 		$checkDescription = "Inspecting AzSK reports storage account."
 		
 		$isStoragePresent = $true;
-		$centralStorageAccountName = $reportsStorageAccount.ResourceName;
+		$centralStorageAccountName = $reportsStorageAccount.Name;
 		$tgtSubStorageAccounts = @()
 		if($this.IsCentralScanModeOn)
 		{
@@ -1723,7 +1716,7 @@ class CCAutomation: CommandBase
 								}
 								else
 								{								
-									$tgtSubStorageAccount.StorageAccountName = $reportsStorageAccount.ResourceName;
+									$tgtSubStorageAccount.StorageAccountName = $reportsStorageAccount.Name;
 								}
 							}
 							$tgtSubStorageAccounts += $tgtSubStorageAccount;
@@ -2036,8 +2029,8 @@ class CCAutomation: CommandBase
 			{
 				mkdir -Path $(Split-Path -Parent $filename) -Force
 			}
-			$keys = Get-AzureRmStorageAccountKey -ResourceGroupName $this.AutomationAccount.CoreResourceGroup -Name $reportsStorageAccount.ResourceName
-			$currentContext = New-AzureStorageContext -StorageAccountName $reportsStorageAccount.ResourceName -StorageAccountKey $keys[0].Value -Protocol Https
+			$keys = Get-AzureRmStorageAccountKey -ResourceGroupName $this.AutomationAccount.CoreResourceGroup -Name $reportsStorageAccount.Name
+			$currentContext = New-AzureStorageContext -StorageAccountName $reportsStorageAccount.Name -StorageAccountKey $keys[0].Value -Protocol Https
 			$CAScanDataBlobObject = Get-AzureStorageBlob -Container $this.CAMultiSubScanConfigContainerName -Blob $this.CATargetSubsBlobName -Context $currentContext -ErrorAction SilentlyContinue 
 			if($null -ne $CAScanDataBlobObject)
 			{
@@ -2306,8 +2299,8 @@ class CCAutomation: CommandBase
 
 		#region: remove the scanobject from the storage account
 		$reportsStorageAccount = [UserSubscriptionDataHelper]::GetUserSubscriptionStorage();
-		$keys = Get-AzureRmStorageAccountKey -ResourceGroupName $this.AutomationAccount.CoreResourceGroup -Name $reportsStorageAccount.ResourceName
-		$currentContext = New-AzureStorageContext -StorageAccountName $reportsStorageAccount.ResourceName -StorageAccountKey $keys[0].Value -Protocol Https
+		$keys = Get-AzureRmStorageAccountKey -ResourceGroupName $this.AutomationAccount.CoreResourceGroup -Name $reportsStorageAccount.Name
+		$currentContext = New-AzureStorageContext -StorageAccountName $reportsStorageAccount.Name -StorageAccountKey $keys[0].Value -Protocol Https
 
 		#Persist only if there are more than one scan object. Count greater than 1 as to check if there are any other subscription apart from the central one
 		if(($finalTargetSubs | Measure-Object).Count -gt 1)
@@ -3725,6 +3718,14 @@ class CCAutomation: CommandBase
 		}
 
 
+	}
+	#Validate if Org policy local debuging is on
+	[void] ValidateIfLocalPolicyIsEnabled()
+	{
+		if(Test-Path $([ConfigurationManager]::GetAzSKSettings().OnlinePolicyStoreUrl))
+		{
+			throw ([SuppressedException]::new(("Currently command is running with local policy folder ($([ConfigurationManager]::GetAzSKSettings().OnlinePolicyStoreUrl)). Please run command with online policy store url."), [SuppressedExceptionType]::Generic))
+		}	  
 	}
 	#endregion
 }

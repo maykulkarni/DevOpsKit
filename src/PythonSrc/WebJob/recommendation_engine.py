@@ -3,10 +3,11 @@
 # Licensed under the MIT License. See LICENSE in the project root for
 # license information.
 # -------------------------------------------------------------------------
+
 import json
 import pandas as pd
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from constants import *
 
 
@@ -46,7 +47,8 @@ def create_feature_groups():
 	combination of features.
 	:return: dict, feature groups
 	"""
-	df = pd.read_csv(DATA_FILE_PATH)
+	filename = get_csv_filename()
+	df = pd.read_csv(filename)
 	req = ["ResourceGroupId", "Feature", "VerificationResult",
 		   "ControlStringId"]
 	df = df[req]
@@ -55,9 +57,11 @@ def create_feature_groups():
 	for idx, row in df.iterrows():
 		if row["Feature"] not in IGNORE_LIST:
 			feature_combinations[row["ResourceGroupId"]].add(row["Feature"])
-	# count failures
+	# count failures of features
 	failures = defaultdict(dict)
 	for idx, row in df.iterrows():
+		# group by resource group ID so every feature will go into
+		# same group aka "feature combination"
 		totals = failures[row["ResourceGroupId"]].setdefault("Totals", 0)
 		fails = failures[row["ResourceGroupId"]].setdefault("Fails", 0)
 		success = failures[row["ResourceGroupId"]].setdefault("Success", 0)
@@ -68,17 +72,30 @@ def create_feature_groups():
 			failures[row["ResourceGroupId"]]["Fails"] = fails + 1
 	# generate feature groups
 	feature_groups = dict()
-	# Counts this specific feature combination has occured
-	# how many times in the dataset
+	categories_count = {"totalcount": defaultdict(int), "combinations_list": defaultdict(list)}
+	# Counts this specific feature combination `of features` has occurred
+	# how many times in the data set
 	for res_id in feature_combinations:
 		features = feature_combinations[res_id]
-		hash_value = get_hash(features, feature_hash)
-		int_list = feature_groups.setdefault(hash_value,
+		feature_hash_value = get_hash(features, feature_hash)
+		most_likely_parent_hash = get_hash(single_parents(features),
+										    category_hash)
+		categories_count["totalcount"][most_likely_parent_hash] += 1
+		categories_count["combinations_list"][most_likely_parent_hash]\
+				.append(list(features))
+		int_list = feature_groups.setdefault(feature_hash_value,
 												{"features": features,
-												 "counts": 0,
-												 "info": failures[res_id]})
-		int_list["counts"] += 1
-	return feature_groups
+												 "occurrences": 0,
+												 "info": dict()})
+		int_list["occurrences"] += 1
+		totals = int_list["info"].setdefault("Totals", 0)
+		fails = int_list["info"].setdefault("Fails", 0)
+		success = int_list["info"].setdefault("Success", 0)
+		int_list["info"]["Totals"] = totals + failures[res_id]["Totals"]
+		int_list["info"]["Fails"] = fails + failures[res_id]["Fails"]
+		int_list["info"]["Success"] = success + failures[res_id]["Success"]
+
+	return feature_groups, categories_count
 
 
 def recurse(features_list, running_hash, rates, running_parents_cache,
@@ -133,11 +150,12 @@ def recurse(features_list, running_hash, rates, running_parents_cache,
 			parents = running_parents_cache.split(" -> ")[:-1]
 			parents_hash = get_hash(parents, category_hash)
 			parent_feature_combo_table[parents_hash].append(feature_info)
-			print("Category combination: {}".format(running_parents_cache))
-			print("*" * 50)
+			# print("Category combination: {}".format(running_parents_cache))
+			# print("*" * 50)
 		else:
-			print("Duplicate hash: {}".format(running_parents_cache))
-	print("#" * 70)
+			pass
+			# print("Duplicate hash: {}".format(running_parents_cache))
+	# print("#" * 70)
 
 
 def create_master_category_and_combo():
@@ -147,19 +165,21 @@ def create_master_category_and_combo():
 			 	features under them.
 			 category_rates: failure, success, total rates of category
 	"""
-	feature_groups = create_feature_groups()
+	feature_groups, categories_count = create_feature_groups()
 	print("Feature groups created")
 	category_rates = dict()
 	parent_feature_table = defaultdict(list)
 	for x in feature_groups:
 		feature_info = {
 			"features": list(feature_groups[x]["features"]),
-			"info": feature_groups[x]["info"]
+			"info": feature_groups[x]["info"],
+			"occurrences": feature_groups[x]["occurrences"]
 		}
 		recurse(list(feature_groups[x]["features"]), 1,
 				feature_groups[x]["info"], "", feature_info,
 				category_rates, parent_feature_table, set())
-	return feature_groups, parent_feature_table, category_rates
+	return feature_groups, parent_feature_table, category_rates, \
+		   categories_count
 
 
 def get_feature_safety(features: list or set, category_groups: dict,
@@ -184,14 +204,9 @@ def get_feature_safety(features: list or set, category_groups: dict,
 	return final_score
 
 
-def score(value) -> float:
-	num = value["info"]["Fails"]
-	den = value["info"]["Totals"]
-	return num / den
-
-
-def get_safest_features(categories, parent_feature_table):
-	"""Returns the safest feature in form of string for the given category
+def get_safest_features(categories):
+	"""Returns the safest feature combination sorted according to the failure
+	rates (lower the better) in form of string for the given category
 	combination. 
 	:param categories: list of categories under which the recommendation is 
 		wanted.
@@ -200,27 +215,72 @@ def get_safest_features(categories, parent_feature_table):
 	:return: string of recommendations
 	"""
 	parent_hash = get_hash(categories, category_hash)
+	category_groups, parent_feature_table, master_category_table, \
+					categories_count = create_master_category_and_combo()
 	value = parent_feature_table[parent_hash]
-	print("Combos: {}".format(value))
-	string = "["
-	for x in sorted(value, key=lambda x: score(x)):
-		string += str(x["features"]) + ","
-	string = string[:-1]
-	string += "]"
-	return string
+	if not value:
+		print("Combination not found")
+		return ""
+	print("Input Combination Info: {}".format(value))
+	for x in value:
+		print(x)
+		features_internal = x["features"]
+		most_likely_parents = single_parents(features_internal)
+		print("Most Likely Parents: {}".format(most_likely_parents))
+		mlp_hash = get_hash(most_likely_parents, category_hash)
+		counts = categories_count[mlp_hash]
+		print("Category count: {}".format(counts))
+
+
+def score(value) -> float:
+	num = value["info"]["Fails"]
+	den = value["info"]["Totals"]
+	return num / den
+
+
+def sort_other_most_used(other_most_used_list):
+	for x in other_most_used_list:
+		x.sort()
+	counter = Counter([tuple(x) for x in other_most_used_list])
+	ret_dict = dict()
+	for x in counter:
+		ret_dict[x.__str__()] = counter[x]
+	return ret_dict
+
+
+def convert_counts_to_pct(counter_dict):
+	counts = 0
+	for x in counter_dict:
+		counts += counter_dict[x]
+	for x in counter_dict:
+		counter_dict[x] /= counts
+	return counter_dict
 
 
 def save_recommendation_json():
 	"""Save the recommendation JSON i.e. parent_feature_table offline.
 	:return:
 	"""
-	category_groups, parent_feature_table, master_category_table = \
-		create_master_category_and_combo()
+	feature_groups, parent_feature_table, master_category_table, \
+		categories_count = create_master_category_and_combo()
 
 	def sort_parent_feature_table(pf_table):
 		for x in pf_table:
 			recommendations = pf_table[x]
 			recommendations.sort(key=score)
+			for recommendations_dict in recommendations:
+				features_list = recommendations_dict["features"]
+				most_likely_parents = single_parents(features_list)
+				most_likely_parents_hash = get_hash(most_likely_parents,
+													 category_hash)
+				f_hash = get_hash(recommendations_dict["features"], feature_hash)
+				recommendations_dict["UsagePercentage"] = \
+					feature_groups[f_hash]["occurrences"] \
+					/ categories_count["totalcount"][most_likely_parents_hash]
+				most_likely_counts = sort_other_most_used(
+					categories_count["combinations_list"][most_likely_parents_hash])
+				recommendations_dict["OtherMostUsed"] = \
+					convert_counts_to_pct(most_likely_counts)
 		return pf_table
 
 	parent_feature_table = sort_parent_feature_table(parent_feature_table)
@@ -231,4 +291,6 @@ def save_recommendation_json():
 
 
 if __name__ == '__main__':
-	save_recommendation_json()
+	get_safest_features(["Messaging", "SecurityInfra", "WebFrontEnd",
+						 "DataStorage"])
+

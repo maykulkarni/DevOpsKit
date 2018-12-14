@@ -49,7 +49,7 @@ def get_from_keyvault(key_name):
 	key_vault_client = KeyVaultClient(credentials)
 
 	# azskrecoenginekv
-	key_vault_uri = "https://sqltostoragekeyvault.vault.azure.net/"
+	key_vault_uri = "https://recoengkeyvault.vault.azure.net/"
 
 	secret = key_vault_client.get_secret(
 		key_vault_uri,
@@ -78,7 +78,7 @@ def get_csv_from_mysql():
 
 @validate(raise_error=False)
 def save_file_to_storage(file):
-	fs = FileService(account_name="recoenginestorage",
+	fs = FileService(account_name="RecommendationEngineStorage",
 					 account_key=get_from_keyvault("storage-account-key"))
 	fs.create_file_from_path("myshare", None, file, file)
 

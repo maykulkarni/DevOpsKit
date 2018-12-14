@@ -68,8 +68,11 @@ def create_feature_groups():
 		failures[row["ResourceGroupId"]]["Totals"] = totals + 1
 		if row["VerificationResult"] == "Passed":
 			failures[row["ResourceGroupId"]]["Success"] = success + 1
-		else:
+		elif (row["VerificationResult"] == "Failed"
+			or row["VerificationResult"] == "Error"
+			or row["VerificationResult"] == "Exception"):
 			failures[row["ResourceGroupId"]]["Fails"] = fails + 1
+
 	# generate feature groups
 	feature_groups = dict()
 	categories_count = {"totalcount": defaultdict(int), "combinations_list": defaultdict(list)}

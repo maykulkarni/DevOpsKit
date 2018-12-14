@@ -5,11 +5,12 @@
 # -------------------------------------------------------------------------
 import ast
 import json
-
+import pandas as pd
+import numpy as np
 from recommendation_engine import (single_parents, get_safest_features, get_hash,
 								   score, get_feature_safety)
 from constants import *
-from flask import Flask, request
+from flask import Flask, request, make_response
 
 app = Flask(__name__)
 
@@ -67,5 +68,14 @@ def hello_world():
 
 
 @app.route("/")
-def works():
-	return "Website Works!"
+def worksa():
+	df = pd.DataFrame(np.random.randint(1, 100, (5, 10)))
+	df.to_csv("test.csv")
+	out = make_response(open("test.csv", "r").read())
+	out.headers["Content-Disposition"] = "attachment; filename=test.csv"
+	out.headers["Content-Type"] = "text/csv"
+	return out
+
+
+if __name__ == "__main__":
+	app.run(debug=True)

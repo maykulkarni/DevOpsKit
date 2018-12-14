@@ -1,0 +1,14 @@
+Category,Hash
+DataStorage,13
+DataProcessing,17
+ReportingAndAnalytics,19
+WebFrontEnd,23
+API,29
+SecurityInfra,31
+SubscriptionCore,37
+Messaging,41
+Hybrid,43
+NetworkInfra,47
+Caching,53
+BackendProcessing,59
+Repository,61
